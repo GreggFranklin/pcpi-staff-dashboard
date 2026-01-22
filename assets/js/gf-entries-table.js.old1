@@ -1,0 +1,233 @@
+/* global jQuery, PCPI_GF */
+(function ($) {
+	"use strict";
+
+	window.PCPI_GF = window.PCPI_GF || {};
+	if (window.PCPI_GF.__entriesTableBound) return;
+	window.PCPI_GF.__entriesTableBound = true;
+
+	function postAjax(payload) {
+		return $.post(PCPI_GF.ajaxUrl, payload);
+	}
+
+	function getAjaxErrorMessage(xhr) {
+		try {
+			const json = xhr && xhr.responseJSON;
+			if (json && json.data && json.data.message) return json.data.message;
+		} catch (e) {}
+		return "Request failed.";
+	}
+
+	// ------------------------------------------------------------
+	// Send PDF modal
+	// ------------------------------------------------------------
+	function ensureSendPdfModal() {
+		if ($("#pcpi-sendpdf-modal").length) return;
+
+		const html = `
+			<div id="pcpi-sendpdf-modal" class="pcpi-modal" aria-hidden="true">
+				<div class="pcpi-modal__backdrop"></div>
+				<div class="pcpi-modal__panel" role="dialog" aria-modal="true" aria-labelledby="pcpi-sendpdf-title">
+					<div class="pcpi-modal__header">
+						<h3 id="pcpi-sendpdf-title">Send PDF</h3>
+					</div>
+
+					<div class="pcpi-modal__body">
+						<label class="pcpi-modal__label" for="pcpi_sendpdf_agency_name">Agency name</label>
+						<input type="text" id="pcpi_sendpdf_agency_name" class="pcpi-modal__input" />
+
+						<label class="pcpi-modal__label" for="pcpi_sendpdf_to_email">Agency email</label>
+						<input type="email" id="pcpi_sendpdf_to_email" class="pcpi-modal__input" />
+
+						<div class="pcpi-modal__note">
+							A secure, expiring link will be emailed to the address above.
+						</div>
+					</div>
+
+					<div class="pcpi-modal__footer">
+						<button type="button" class="gf-action-btn pcpi-btn-cancel pcpi-modal-cancel">Cancel</button>
+						<button type="button" class="gf-action-btn pcpi-btn-send pcpi-modal-send">Send</button>
+					</div>
+				</div>
+			</div>
+		`;
+
+		$("body").append(html);
+	}
+
+	function openSendPdfModal(defaultName, defaultEmail) {
+		ensureSendPdfModal();
+
+		const $modal = $("#pcpi-sendpdf-modal");
+		$("#pcpi_sendpdf_agency_name").val(defaultName || "");
+		$("#pcpi_sendpdf_to_email").val(defaultEmail || "");
+
+		$modal.attr("aria-hidden", "false").show();
+
+		setTimeout(function () {
+			$("#pcpi_sendpdf_agency_name").trigger("focus");
+		}, 20);
+
+		return new Promise(function (resolve) {
+			function close(result) {
+				$(document).off("keydown.pcpiSendPdfModal");
+				$modal.off("click.pcpiSendPdfModal");
+				$modal.hide().attr("aria-hidden", "true");
+				resolve(result);
+			}
+
+			$(document).on("keydown.pcpiSendPdfModal", function (ev) {
+				if (ev.key === "Escape") close(null);
+			});
+
+			$modal.on("click.pcpiSendPdfModal", ".pcpi-modal__backdrop", function () {
+				close(null);
+			});
+
+			$modal.on("click.pcpiSendPdfModal", ".pcpi-modal-cancel", function () {
+				close(null);
+			});
+
+			$modal.on("click.pcpiSendPdfModal", ".pcpi-modal-send", function () {
+				const name = ($("#pcpi_sendpdf_agency_name").val() || "").toString().trim();
+				const email = ($("#pcpi_sendpdf_to_email").val() || "").toString().trim();
+				close({ name, email });
+			});
+		});
+	}
+
+	// ------------------------------------------------------------
+	// RESEND
+	// ------------------------------------------------------------
+	$(document).on("click", ".pcpi-gf-resend-entry", function (e) {
+		e.preventDefault();
+		e.stopPropagation();
+
+		const btn = $(this);
+		if (btn.data("pcpiBusy")) return;
+		btn.data("pcpiBusy", true);
+
+		if (!window.confirm(PCPI_GF.confirmResend || "Resend?")) {
+			btn.data("pcpiBusy", false);
+			return;
+		}
+
+		postAjax({
+			action: "gf_resend_entry",
+			security: PCPI_GF.nonceResend,
+			entry_id: btn.data("id"),
+		})
+			.done(function (res) {
+				alert((res && res.data && res.data.message) || (res && res.success ? "Sent." : "Request failed."));
+			})
+			.fail(function (xhr) {
+				alert(getAjaxErrorMessage(xhr));
+			})
+			.always(function () {
+				btn.data("pcpiBusy", false);
+			});
+	});
+
+	// ------------------------------------------------------------
+	// DELETE
+	// ------------------------------------------------------------
+	$(document).on("click", ".pcpi-gf-delete-entry", function (e) {
+		e.preventDefault();
+		e.stopPropagation();
+
+		const btn = $(this);
+		if (btn.data("pcpiBusy")) return;
+		btn.data("pcpiBusy", true);
+
+		if (!window.confirm(PCPI_GF.confirmDelete || "Delete?")) {
+			btn.data("pcpiBusy", false);
+			return;
+		}
+
+		postAjax({
+			action: "gf_delete_entry",
+			security: PCPI_GF.nonceDelete,
+			entry_id: btn.data("id"),
+		})
+			.done(function (res) {
+				if (res && res.success) {
+					btn.closest("tr").fadeOut(200, function () {
+						$(this).remove();
+					});
+				} else {
+					alert((res && res.data && res.data.message) || "Delete failed.");
+				}
+			})
+			.fail(function (xhr) {
+				alert(getAjaxErrorMessage(xhr));
+			})
+			.always(function () {
+				btn.data("pcpiBusy", false);
+			});
+	});
+
+	// ------------------------------------------------------------
+	// SEND PDF (modal)
+	// ------------------------------------------------------------
+	$(document).on("click", ".pcpi-gf-sendpdf", async function (e) {
+		e.preventDefault();
+		e.stopPropagation();
+
+		const btn = $(this);
+		if (btn.data("pcpiBusy")) return;
+		btn.data("pcpiBusy", true);
+
+		const applicantId = btn.data("applicant-id");
+		const reviewId = btn.data("review-id");
+
+		const defaultEmail = (btn.data("agency-email") || "").toString().trim();
+		const defaultName = (btn.data("agency-name") || "").toString().trim();
+
+		try {
+			const result = await openSendPdfModal(defaultName, defaultEmail);
+
+			if (!result) {
+				btn.data("pcpiBusy", false);
+				return;
+			}
+
+			const agencyName = (result.name || "").trim();
+			const toEmail = (result.email || "").trim();
+
+			if (!toEmail) {
+				alert("Agency email is required.");
+				btn.data("pcpiBusy", false);
+				return;
+			}
+
+			if (!window.confirm(PCPI_GF.confirmSendPdf || "Send now?")) {
+				btn.data("pcpiBusy", false);
+				return;
+			}
+
+			postAjax({
+				action: "pcpi_send_pdf_link",
+				security: PCPI_GF.nonceSendPdf,
+				applicant_entry_id: applicantId,
+				review_entry_id: reviewId,
+				to_email: toEmail,
+				agency_name: agencyName,
+			})
+				.done(function (res) {
+					if (res && res.success) {
+						alert((res.data && res.data.message) || "Sent.");
+					} else {
+						alert((res && res.data && res.data.message) || "Send failed.");
+					}
+				})
+				.fail(function (xhr) {
+					alert(getAjaxErrorMessage(xhr));
+				})
+				.always(function () {
+					btn.data("pcpiBusy", false);
+				});
+		} catch (err) {
+			btn.data("pcpiBusy", false);
+		}
+	});
+})(jQuery);

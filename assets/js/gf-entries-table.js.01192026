@@ -1,0 +1,129 @@
+/* global jQuery, PCPI_GF */
+(function ($) {
+	"use strict";
+
+	// If this file is loaded twice, do NOT bind twice.
+	window.PCPI_GF = window.PCPI_GF || {};
+	if (window.PCPI_GF.__entriesTableBound) {
+		return;
+	}
+	window.PCPI_GF.__entriesTableBound = true;
+
+	function postAjax(payload) {
+		return $.post(PCPI_GF.ajaxUrl, payload);
+	}
+
+	function getAjaxErrorMessage(xhr) {
+		// Try to parse WP JSON error response.
+		try {
+			const json = xhr && xhr.responseJSON;
+			if (json && json.data && json.data.message) return json.data.message;
+		} catch (e) {}
+		return "Request failed.";
+	}
+
+	function asText(v) {
+		if (typeof v === "string") return v;
+		if (v === null || typeof v === "undefined") return "";
+		try { return JSON.stringify(v); } catch (e) {}
+		return String(v);
+	}
+
+	// ------------------------------------------------------------
+	// RESEND
+	// ------------------------------------------------------------
+	$(document).on("click", ".pcpi-gf-resend-entry", function (e) {
+		e.preventDefault();
+		e.stopPropagation();
+
+		const btn = $(this);
+
+		// guard against double-click / double-fire
+		if (btn.data("pcpiBusy")) return;
+		btn.data("pcpiBusy", true);
+
+		if (!window.confirm(PCPI_GF.confirmResend)) {
+			btn.data("pcpiBusy", false);
+			return;
+		}
+
+		const orig = btn.text();
+		btn.prop("disabled", true).text("Sending…");
+
+		postAjax({
+			action: "gf_resend_entry",
+			entry_id: btn.data("id"),
+			security: PCPI_GF.nonceResend
+		})
+		.done(function (res) {
+			btn.prop("disabled", false).text(orig).data("pcpiBusy", false);
+
+			if (res && res.success) {
+				alert("Sent!");
+			} else {
+				const msg = (res && res.data && res.data.message) ? res.data.message : "Error sending.";
+				alert(asText(msg));
+			}
+		})
+		.fail(function (xhr) {
+			btn.prop("disabled", false).text(orig).data("pcpiBusy", false);
+			alert(getAjaxErrorMessage(xhr));
+		});
+	});
+
+	// ------------------------------------------------------------
+	// DELETE (cascade)
+	// ------------------------------------------------------------
+	$(document).on("click", ".pcpi-gf-delete-entry", function (e) {
+		e.preventDefault();
+		e.stopPropagation();
+
+		const btn = $(this);
+
+		// guard against double-click / double-fire
+		if (btn.data("pcpiBusy")) return;
+		btn.data("pcpiBusy", true);
+
+		if (!window.confirm(PCPI_GF.confirmDelete)) {
+			btn.data("pcpiBusy", false);
+			return;
+		}
+
+		const row  = btn.closest("tr");
+		const orig = btn.text();
+
+		btn.prop("disabled", true).text("Deleting…");
+
+		postAjax({
+			action: "gf_delete_entry",
+			entry_id: btn.data("id"),
+			security: PCPI_GF.nonceDelete
+		})
+		.done(function (res) {
+			if (res && res.success) {
+				const d = res.data || {};
+				const parent = parseInt(d.deleted_parent || 0, 10);
+				const q      = parseInt(d.deleted_questionnaire || 0, 10);
+				const r      = parseInt(d.deleted_review || 0, 10);
+
+				row.fadeOut(250, function () { $(this).remove(); });
+
+				alert(
+					"Deleted:\n" +
+					"• Applicant: " + parent + "\n" +
+					"• Questionnaire: " + q + "\n" +
+					"• Review: " + r
+				);
+			} else {
+				const msg = (res && res.data && res.data.message) ? res.data.message : "Delete failed.";
+				btn.prop("disabled", false).text(orig).data("pcpiBusy", false);
+				alert(asText(msg));
+			}
+		})
+		.fail(function (xhr) {
+			btn.prop("disabled", false).text(orig).data("pcpiBusy", false);
+			alert(getAjaxErrorMessage(xhr));
+		});
+	});
+
+})(jQuery);

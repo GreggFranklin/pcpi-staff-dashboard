@@ -1,0 +1,328 @@
+/* -------------------------------------------------
+ * PCPI Staff Dashboard – Entries Table
+ * ------------------------------------------------- */
+
+.pcpi-gf-table {
+	width: 100%;
+	border-collapse: collapse;
+	background: #fff;
+	border: 1px solid #e5e7eb;
+	border-radius: 10px;
+	overflow: hidden;
+}
+
+.pcpi-gf-table thead th {
+	text-align: left;
+	font-size: 13px;
+	font-weight: 700;
+	padding: 12px 14px;
+	background: #f8fafc;
+	border-bottom: 1px solid #e5e7eb;
+}
+
+.pcpi-gf-table tbody td {
+	padding: 12px 14px;
+	border-bottom: 1px solid #eef2f7;
+	vertical-align: middle;
+	font-size: 14px;
+}
+
+.pcpi-row-even { background: #fff; }
+.pcpi-row-odd  { background: #fbfdff; }
+
+.pcpi-gf-actions-col,
+.pcpi-actions-td {
+	width: 1%;
+	white-space: nowrap;
+}
+
+/* Actions container */
+.pcpi-actions {
+	display: flex;
+	gap: 8px;
+	align-items: center;
+	flex-wrap: nowrap;
+}
+
+/* -------------------------------------------------
+ * Base button style
+ * ------------------------------------------------- */
+
+.gf-action-btn {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	padding: 8px 10px;
+	border-radius: 3px; /* CHANGED: tighter corners */
+	border: 1px solid transparent;
+	font-size: 13px;
+	line-height: 1;
+	font-weight: 700;
+	text-decoration: none;
+	cursor: pointer;
+	user-select: none;
+
+	/* ADDED: hover animation (no color shifting) */
+	transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+/* CHANGED: no focus ring */
+.gf-action-btn:focus,
+.gf-action-btn:focus-visible {
+	outline: none;
+	box-shadow: none;
+}
+
+/* Disabled */
+.gf-action-btn.gf-disabled,
+.gf-action-btn[disabled] {
+	opacity: 0.55;
+	cursor: not-allowed;
+	/* IMPORTANT: keep hover/title tooltips working */
+	pointer-events: auto;
+}
+
+/* Keep hover behavior stable (your preference: no color changes) */
+.gf-action-btn:hover {
+	filter: none;
+}
+
+/* ADDED: subtle hover motion + depth */
+.gf-action-btn:hover:not(.gf-disabled):not([disabled]) {
+	transform: translateY(-1px);
+	box-shadow: 0 2px 6px rgba(0,0,0,0.12);
+}
+
+/* ADDED: subtle press state */
+.gf-action-btn:active:not(.gf-disabled):not([disabled]) {
+	transform: translateY(0);
+	box-shadow: 0 1px 3px rgba(0,0,0,0.12);
+}
+
+/* -------------------------------------------------
+ * Specific buttons
+ * ------------------------------------------------- */
+
+/* Review (existing green) */
+.pcpi-btn-review {
+	background: #16a34a;
+	color: #fff;
+	border-color: #16a34a;
+}
+.pcpi-btn-review:hover,
+.pcpi-btn-review:focus,
+.pcpi-btn-review:active {
+	background: #16a34a;
+	color: #fff;
+	border-color: #16a34a;
+}
+
+/* Summary */
+.pcpi-btn-summary {
+	background: #111827;
+	color: #fff;
+	border-color: #111827;
+}
+.pcpi-btn-summary:hover,
+.pcpi-btn-summary:focus,
+.pcpi-btn-summary:active {
+	background: #111827;
+	color: #fff;
+	border-color: #111827;
+}
+
+/* Resend */
+.pcpi-btn-resend {
+	background: #2b6cb0;
+	color: #fff;
+	border-color: #2b6cb0;
+}
+.pcpi-btn-resend:hover,
+.pcpi-btn-resend:focus,
+.pcpi-btn-resend:active {
+	background: #2b6cb0;
+	color: #fff;
+	border-color: #2b6cb0;
+}
+
+/* Delete */
+.pcpi-btn-delete {
+	background: #dc2626;
+	color: #fff;
+	border-color: #dc2626;
+}
+.pcpi-btn-delete:hover,
+.pcpi-btn-delete:focus,
+.pcpi-btn-delete:active {
+	background: #dc2626;
+	color: #fff;
+	border-color: #dc2626;
+}
+
+/* Disabled look used by spans */
+.pcpi-btn-disabled {
+	background: #e5e7eb;
+	color: #475569;
+	border-color: #e5e7eb;
+}
+
+/* Send PDF */
+.gf-action-btn.pcpi-btn-sendpdf {
+	background-color: #72aee6;
+	color: #fff;
+	border: 1px solid #72aee6;
+}
+.gf-action-btn.pcpi-btn-sendpdf:hover,
+.gf-action-btn.pcpi-btn-sendpdf:focus,
+.gf-action-btn.pcpi-btn-sendpdf:active {
+	background-color: #72aee6;
+	color: #fff;
+	border-color: #72aee6;
+	box-shadow: none; /* keep same as before */
+}
+
+/* -------------------------------------------------
+ * Pagination (compact, right aligned)
+ * ------------------------------------------------- */
+
+.pcpi-pagination {
+	display: flex;
+	justify-content: flex-end; /* right aligned */
+	margin-top: 10px;
+}
+
+.pcpi-pagination-list {
+	display: inline-flex;
+	gap: 6px;
+	align-items: center;
+	padding: 0;
+	margin: 0;
+	list-style: none;
+}
+
+.pcpi-page-item a,
+.pcpi-page-item span {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	min-width: 28px;
+	height: 28px;
+	padding: 0 8px;
+	border-radius: 8px;
+	border: 1px solid #e2e8f0;
+	font-size: 12px; /* smaller */
+	font-weight: 700;
+	text-decoration: none;
+	color: #0f172a;
+	background: #fff;
+}
+
+.pcpi-page-item.is-active span {
+	background: #2b6cb0;
+	border-color: #2b6cb0;
+	color: #fff;
+}
+
+.pcpi-page-item.is-disabled span {
+	opacity: 0.4;
+}
+
+/* -------------------------------------------------
+ * Modal (Send PDF)
+ * ------------------------------------------------- */
+
+.pcpi-modal {
+	position: fixed;
+	inset: 0;
+	z-index: 99999;
+}
+
+.pcpi-modal__backdrop {
+	position: absolute;
+	inset: 0;
+	background: rgba(0,0,0,0.45);
+}
+
+.pcpi-modal__panel {
+	position: absolute;
+	left: 50%;
+	top: 20%;
+	transform: translateX(-50%);
+	width: min(520px, 92vw);
+	background: #fff;
+	border-radius: 12px;
+	box-shadow: 0 12px 30px rgba(0,0,0,0.25);
+	overflow: hidden;
+}
+
+.pcpi-modal__header {
+	padding: 14px 16px;
+	border-bottom: 1px solid #e5e7eb;
+}
+
+.pcpi-modal__header h3 {
+	margin: 0;
+	font-size: 16px;
+}
+
+.pcpi-modal__body {
+	padding: 14px 16px;
+}
+
+.pcpi-modal__label {
+	display: block;
+	font-size: 13px;
+	font-weight: 700;
+	margin: 10px 0 6px;
+}
+
+.pcpi-modal__input {
+	width: 100%;
+	padding: 10px 12px;
+	border: 1px solid #cbd5e1;
+	border-radius: 10px;
+	font-size: 14px;
+}
+
+.pcpi-modal__note {
+	margin-top: 12px;
+	font-size: 12px;
+	color: #64748b;
+}
+
+.pcpi-modal__footer {
+	padding: 12px 16px;
+	border-top: 1px solid #e5e7eb;
+	display: flex;
+	justify-content: flex-end;
+	gap: 8px;
+}
+
+/* Modal buttons */
+.pcpi-btn-cancel {
+	background: #fff;
+	color: #0f172a;
+	border: 1px solid #cbd5e1;
+}
+.pcpi-btn-cancel:hover,
+.pcpi-btn-cancel:focus,
+.pcpi-btn-cancel:active {
+	background: #fff;
+	color: #0f172a;
+	border-color: #cbd5e1;
+	box-shadow: none;
+}
+
+.pcpi-btn-send {
+	background: #72aee6;
+	color: #fff;
+	border: 1px solid #72aee6;
+}
+.pcpi-btn-send:hover,
+.pcpi-btn-send:focus,
+.pcpi-btn-send:active {
+	background: #72aee6;
+	color: #fff;
+	border-color: #72aee6;
+	box-shadow: none;
+}
