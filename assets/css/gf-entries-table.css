@@ -30,9 +30,9 @@
 .pcpi-row-even { background: #fff; }
 .pcpi-row-odd  { background: #fbfdff; }
 
+/* Keep Actions compact without forcing weird column spacing */
 .pcpi-gf-actions-col,
 .pcpi-actions-td {
-	width: 1%;
 	white-space: nowrap;
 }
 
@@ -48,6 +48,34 @@
 
 .pcpi-actions .gf-action-btn {
 	display: inline-flex;
+}
+
+/* -------------------------------------------------
+ * Column layout controlled by <colgroup>
+ * ------------------------------------------------- */
+
+.pcpi-col-applicant { width: 30%; }
+.pcpi-col-submitted { width: 22%; }
+.pcpi-col-status    { width: 20%; }
+.pcpi-col-actions   { width: 28%; }
+
+/* Wrap long applicant names */
+.pcpi-gf-table td:nth-child(1) {
+	white-space: normal;
+	word-break: break-word;
+}
+
+/* Don’t wrap Submitted + Status */
+.pcpi-gf-table th:nth-child(2),
+.pcpi-gf-table td:nth-child(2),
+th.pcpi-status-col,
+td.pcpi-status-td {
+	white-space: nowrap;
+}
+
+/* Give extra breathing room between Status and Actions */
+td.pcpi-status-td {
+	padding-right: 22px;
 }
 
 /* -------------------------------------------------
@@ -176,22 +204,28 @@
 }
 
 /* -------------------------------------------------
- * Pagination (compact, right aligned)
+ * Pagination (compact, RIGHT aligned)
  * ------------------------------------------------- */
 
 .pcpi-pagination {
-	display: flex;
-	justify-content: flex-end;
+	display: flex !important;
+	width: 100% !important;               /* ensure it spans the row */
+	justify-content: flex-end !important;  /* backup alignment */
 	margin-top: 10px;
+	clear: both;
 }
 
 .pcpi-pagination-list {
-	display: inline-flex;
+	display: inline-flex !important;
 	gap: 6px;
 	align-items: center;
-	padding: 0;
-	margin: 0;
 	list-style: none;
+	padding: 0 !important;
+	margin: 0 0 0 auto !important;        /* the “always push right” hammer */
+}
+
+.pcpi-pagination-list li {
+	margin: 0 !important;
 }
 
 .pcpi-page-item a,
@@ -222,33 +256,6 @@
 }
 
 /* -------------------------------------------------
- * Pagination (compact, RIGHT aligned - hardened)
- * ------------------------------------------------- */
-
-.pcpi-pagination {
-	display: flex !important;
-	width: 100% !important;              /* ensure it spans the row */
-	justify-content: flex-end !important; /* backup alignment */
-	margin-top: 10px;
-	clear: both;
-}
-
-.pcpi-pagination-list {
-	display: inline-flex !important;
-	gap: 6px;
-	align-items: center;
-
-	list-style: none;
-	padding: 0 !important;
-	margin: 0 0 0 auto !important;       /* the “always push right” hammer */
-}
-
-/* Optional: defensive reset in case theme adds weird li spacing */
-.pcpi-pagination-list li {
-	margin: 0 !important;
-}
-
-/* -------------------------------------------------
  * Modal (Send PDF)
  * ------------------------------------------------- */
 
@@ -268,13 +275,19 @@
 .pcpi-modal__panel {
 	position: absolute;
 	left: 50%;
-	top: 20%;
-	transform: translateX(-50%);
-	width: min(520px, 92vw);
+	top: 50%;
+	transform: translate(-50%, -50%);
+
+	width: min(640px, 92vw);
+	max-height: 90vh;
+
 	background: #fff;
 	border-radius: 12px;
 	box-shadow: 0 12px 30px rgba(0,0,0,0.25);
 	overflow: hidden;
+
+	display: flex;
+	flex-direction: column;
 }
 
 .pcpi-modal__header {
@@ -287,8 +300,29 @@
 	font-size: 16px;
 }
 
+
+/* Modal close button */
+.pcpi-modal__header--with-x{
+	display:flex;
+	align-items:center;
+	justify-content:space-between;
+	gap: 12px;
+}
+
+.pcpi-modal__x{
+	appearance:none;
+	border:0;
+	background:transparent;
+	font-size: 22px;
+	line-height: 1;
+	cursor:pointer;
+	padding: 6px 8px;
+	margin: -6px -8px -6px 0;
+}
+
 .pcpi-modal__body {
 	padding: 14px 16px;
+	overflow-y: auto;
 }
 
 .pcpi-modal__label {
@@ -347,45 +381,197 @@
 }
 
 /* -------------------------------------------------
+ * Staff Help link in Actions header
+ * ------------------------------------------------- */
+
+.pcpi-actions-header{
+	display:flex;
+	align-items:center;
+	justify-content:space-between;
+	width:100%;
+	gap:10px;
+}
+
+.pcpi-actions-title{
+	font-weight:600;
+}
+
+.pcpi-staff-help{
+	display:inline-flex;
+	align-items:center;
+	gap:4px;
+	white-space:nowrap;
+}
+
+.pcpi-staff-help .dashicons{
+	font-size:16px;
+	width:16px;
+	height:16px;
+	line-height:16px;
+	color:#2271b1;
+}
+
+.pcpi-staff-help-link{
+	font-size:13px;
+	font-weight:500;
+	color:#2271b1;
+	text-decoration:none;
+	white-space:nowrap;
+}
+
+.pcpi-staff-help-link:hover{
+	text-decoration:underline;
+	color:#135e96;
+}
+
+@media (max-width: 640px) {
+	.pcpi-help-text { display: none; }
+}
+
+/* ------------------------------------------------------------
+ * Status Column (Pills)
+ * ------------------------------------------------------------ */
+
+.pcpi-status-pill {
+	display: inline-flex;
+	align-items: center;
+	white-space: nowrap;
+	padding: 4px 10px;
+	border-radius: 999px;
+	font-size: 12px;
+	font-weight: 700;
+	line-height: 1.2;
+	border: 1px solid rgba(0,0,0,0.08);
+	background: #f6f7f7;
+	color: #1d2327;
+}
+
+/* Match the plugin’s class names (double-dash) */
+.pcpi-status--pending   { background: #f1f3f5; color: #495057; }
+.pcpi-status--submitted { background: #e7f1ff; color: #1c5fd4; }
+.pcpi-status--ready     { background: #fff3cd; color: #856404; }
+.pcpi-status--reviewed  { background: #e6f4ea; color: #1e7e34; }
+.pcpi-status--pdf       { background: #d4edda; color: #155724; }
+
+/* -------------------------------------------------
  * Mobile: stack action buttons + allow wrapping
  * ------------------------------------------------- */
 @media (max-width: 640px) {
 
-  /* Let the table behave on small screens */
-  .pcpi-gf-table {
-    border-radius: 10px;
-    overflow: hidden;
-  }
+	/* Let the table behave on small screens */
+	.pcpi-gf-table {
+		border-radius: 10px;
+		overflow: hidden;
+	}
 
-  /* Allow the Actions cell to wrap */
-  .pcpi-actions-td,
-  .pcpi-gf-actions-col {
-    width: auto;
-    white-space: normal;
-  }
+	/* Allow the Actions cell to wrap */
+	.pcpi-actions-td,
+	.pcpi-gf-actions-col {
+		white-space: normal;
+	}
 
-  /* Stack buttons */
-  .pcpi-actions {
-    flex-wrap: wrap;          /* override nowrap */
-    white-space: normal;      /* override nowrap */
-    justify-content: flex-start;
-    gap: 8px;
-  }
+	/* Stack buttons */
+	.pcpi-actions {
+		flex-wrap: wrap;
+		white-space: normal;
+		justify-content: flex-start;
+		gap: 8px;
+	}
 
-  /* Each action becomes a full-width row */
-  .pcpi-actions .gf-action-btn {
-    width: 100%;
-    justify-content: center;
-  }
+	/* Each action becomes a full-width row */
+	.pcpi-actions .gf-action-btn {
+		width: 100%;
+		justify-content: center;
+	}
 
-  /* Disabled spans should behave like buttons */
-  .pcpi-actions span.gf-action-btn {
-    display: inline-flex;
-  }
+	/* Disabled spans should behave like buttons */
+	.pcpi-actions span.gf-action-btn {
+		display: inline-flex;
+	}
 
-  /* Optional: give the Actions area a little breathing room */
-  .pcpi-actions-td {
-    padding-top: 10px;
-    padding-bottom: 10px;
-  }
+	/* Optional: give the Actions area a little breathing room */
+	.pcpi-actions-td {
+		padding-top: 10px;
+		padding-bottom: 10px;
+	}
+
+	/* On mobile, let long applicant names wrap naturally */
+	.pcpi-gf-table td:nth-child(1) {
+		white-space: normal;
+		word-break: break-word;
+	}
+}
+
+/* -------------------------------------------------
+ * Mobile/Tablet: turn table into stacked "cards"
+ * ------------------------------------------------- */
+@media (max-width: 768px) {
+
+	/* Hide header row */
+	.pcpi-gf-table thead {
+		display: none;
+	}
+
+	/* Break the table layout so it doesn't force horizontal scrolling */
+	.pcpi-gf-table,
+	.pcpi-gf-table tbody,
+	.pcpi-gf-table tr,
+	.pcpi-gf-table td {
+		display: block;
+		width: 100%;
+	}
+
+	/* Each entry becomes a card */
+	.pcpi-gf-table tr {
+		border-bottom: 1px solid #eef2f7;
+		padding: 12px 14px;
+	}
+
+	/* Cell rows with labels */
+	.pcpi-gf-table td {
+		padding: 8px 0;
+		border-bottom: 0;
+		display: flex;
+		align-items: flex-start;
+		justify-content: space-between;
+		gap: 12px;
+		white-space: normal; /* allow wrapping */
+	}
+
+	.pcpi-gf-table td::before {
+		content: attr(data-label);
+		font-weight: 700;
+		font-size: 12px;
+		color: #475569;
+		flex: 0 0 auto;
+		padding-right: 10px;
+	}
+
+	/* Let values wrap nicely */
+	.pcpi-gf-table td > * {
+		max-width: 100%;
+	}
+
+	/* Status line: keep pill on right but allow wrap if needed */
+	.pcpi-status-td {
+		align-items: center;
+	}
+
+	/* Actions become a vertical stack */
+	.pcpi-actions-td {
+		display: block; /* overrides flex row */
+	}
+
+	.pcpi-actions {
+		justify-content: flex-start;
+		flex-wrap: wrap;
+		white-space: normal;
+		gap: 8px;
+	}
+
+	.pcpi-actions .gf-action-btn,
+	.pcpi-actions span.gf-action-btn {
+		width: 100%;
+		justify-content: center;
+	}
 }

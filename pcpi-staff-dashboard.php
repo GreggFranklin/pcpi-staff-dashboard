@@ -2,7 +2,7 @@
 /**
  * Plugin Name: _PCPI Staff dashboard
  * Description: Staff dashboard tools for the PCPI polygraph Gravity Forms workflow: provides the [gf_entries_table] shortcode (Applicant list with Review/Summary/Send PDF/Resend/Delete actions), AJAX resend of the Applicant “Questionnaire link” notification, AJAX send PDF link to Agency (signed), and cascade deletion across Applicant (Form 1) → Questionnaire (Form 2) → Examiner Review (Form 23), including Gravity PDF Summary link generation.
- * Version:     1.0.6
+ * Version:     1.0.8
  * Author:      Gregg Franklin, Marc Benzakein
  * License:     GPLv2 or later
  *
@@ -25,7 +25,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 if ( ! defined( 'PCPI_PGFT_VERSION' ) ) {
-	define( 'PCPI_PGFT_VERSION', '1.0.6' );
+	define( 'PCPI_PGFT_VERSION', '1.0.8' );
 }
 
 if ( ! defined( 'PCPI_PGFT_FILE' ) ) {
@@ -108,6 +108,13 @@ final class PCPI_Polygraph_GF_Tools {
 	private static function user_can_manage() : bool {
 		return ( current_user_can( 'gf_manage_entries' ) || current_user_can( 'manage_options' ) );
 	}
+	
+	// NEW: Staff help URL (filterable)
+	private static function get_staff_help_url() : string {
+		$default = site_url( '/staff-help/' );
+		$url     = apply_filters( 'pcpi_staff_help_url', $default );
+		return esc_url( (string) $url );
+	}
 
 	private static function maybe_enqueue_assets() : void {
 		if ( self::$assets_enqueued ) {
@@ -119,6 +126,9 @@ final class PCPI_Polygraph_GF_Tools {
 		}
 
 		self::$assets_enqueued = true;
+		
+		// NEW: Dashicons are not always loaded on the front-end
+		wp_enqueue_style( 'dashicons' );		
 
 		wp_enqueue_style(
 			'pcpi-gf-entries-table',
@@ -146,6 +156,11 @@ final class PCPI_Polygraph_GF_Tools {
 				'nonceDelete'  => wp_create_nonce( 'gf_delete_entry' ),
 				'nonceSendPdf' => wp_create_nonce( 'pcpi_send_pdf_link' ),
 
+				'addApplicantBtnSelector'   => '.pcpi-add-applicant-btn',
+				'addApplicantFormId'        => 1,
+				'addApplicantDisableMobile' => true,
+				'addApplicantMobileMaxWidth'=> 782,
+
 				'confirmResend' => 'Resend link to applicant?',
 				'confirmDelete' => "Permanently delete this applicant?\n\nThis will also delete any related:\n• Polygraph Questionnaire entries\n• Polygraph Questionnaire Review entries\n\nThis cannot be undone.",
 			]
@@ -156,6 +171,85 @@ final class PCPI_Polygraph_GF_Tools {
 		$s = trim( wp_strip_all_tags( $s ) );
 		$s = function_exists( 'mb_strtolower' ) ? mb_strtolower( $s ) : strtolower( $s );
 		return $s;
+	}
+
+
+	// NEW: Attempt to detect the Applicant email field ID from the Form 1 form object.
+	// Falls back to 0 if not found.
+	private static function get_applicant_email_field_id( $form ) : int {
+		$fid = 0;
+
+		// Allow an override if you ever want to hard-code it.
+		$override = apply_filters( 'pcpi_applicant_email_field_id', 0, $form );
+		if ( $override ) {
+			return absint( $override );
+		}
+
+		if ( empty( $form ) || empty( $form['fields'] ) || ! is_array( $form['fields'] ) ) {
+			return 0;
+		}
+
+		foreach ( $form['fields'] as $field ) {
+			// Fields are usually GF_Field objects.
+			$type = '';
+			$id   = 0;
+
+			if ( is_object( $field ) ) {
+				$type = isset( $field->type ) ? (string) $field->type : '';
+				$id   = isset( $field->id ) ? absint( $field->id ) : 0;
+			} elseif ( is_array( $field ) ) {
+				$type = isset( $field['type'] ) ? (string) $field['type'] : '';
+				$id   = isset( $field['id'] ) ? absint( $field['id'] ) : 0;
+			}
+
+			if ( $id && strtolower( $type ) === 'email' ) {
+				$fid = $id;
+				break;
+			}
+		}
+
+		return absint( $fid );
+	}
+
+
+	private static function build_status_pill( string $key, string $label ) : string {
+		$key = sanitize_key( $key );
+		$cls = 'pcpi-status-pill pcpi-status--' . $key;
+		return '<span class="' . esc_attr( $cls ) . '">' . esc_html( $label ) . '</span>';
+	}
+	
+		/**
+		 * Status is derived (no DB writes) so this cannot break anything.
+		 *
+		 * Keys:
+		 * - pending   (no questionnaire entry)
+		 * - submitted (questionnaire exists but not marked review-ready)
+		 * - ready     (review-ready but no review entry yet)
+		 * - reviewed  (review entry exists but PDF not yet available)
+		 * - pdf       (PDF is available)
+		 */
+	private static function compute_applicant_status( int $q_entry_id, bool $review_ready, int $review_entry_id, bool $pdf_ready ) : array {
+		// Default: Questionnaire not submitted yet.
+		if ( $q_entry_id <= 0 ) {
+			return [ 'key' => 'pending', 'label' => 'Questionnaire Pending' ];
+		}
+	
+		// Questionnaire submitted, but not yet marked ready for review.
+		if ( ! $review_ready ) {
+			return [ 'key' => 'submitted', 'label' => 'Submitted' ];
+		}
+	
+		// Ready for staff review, but staff/examiner review entry not created yet.
+		if ( $review_entry_id <= 0 ) {
+			return [ 'key' => 'ready', 'label' => 'Ready for Review' ];
+		}
+	
+		// Review exists.
+		if ( $pdf_ready ) {
+			return [ 'key' => 'pdf', 'label' => 'PDF Ready' ];
+		}
+	
+		return [ 'key' => 'reviewed', 'label' => 'Review Complete' ];
 	}
 
 	private static function fetch_entries_paged( int $form_id, array $criteria, ?array $sorting = null, int $page_size = 200 ) {
@@ -340,14 +434,37 @@ final class PCPI_Polygraph_GF_Tools {
 		static $cache_review_entry_by_qid = [];
 
 		$html = '<table class="pcpi-gf-table">
-			<thead>
-				<tr>
-					<th>Applicant</th>
-					<th>Submitted</th>
-					<th class="pcpi-gf-actions-col">Actions</th>
-				</tr>
-			</thead>
-			<tbody>';
+		<colgroup>
+  			<col class="pcpi-col-applicant">
+  			<col class="pcpi-col-submitted">
+  			<col class="pcpi-col-status">
+  			<col class="pcpi-col-actions">
+		</colgroup>
+	<thead>
+		<tr>
+			<th>Applicant</th>
+			<th>Submitted</th>
+			<th class="pcpi-status-col">Status</th>
+<th class="pcpi-gf-actions-col">
+	<div class="pcpi-actions-header">
+		<span class="pcpi-actions-title">Actions</span>
+
+		<div class="pcpi-staff-help">
+			<span class="dashicons dashicons-editor-help" aria-hidden="true"></span>
+			<a href="' . self::get_staff_help_url() . '" class="pcpi-staff-help-link" target="_blank" rel="noopener noreferrer">
+				Help
+			</a>
+		</div>
+	</div>
+</th>
+
+		</tr>
+	</thead>
+	<tbody>';
+
+		// NEW: Load Form 1 once so we can prefill the Resend modal with the current Applicant email.
+		$parent_form          = GFAPI::get_form( $PARENT_FORM_ID );
+		$applicant_email_fid  = self::get_applicant_email_field_id( $parent_form );
 
 		$i = 0;
 
@@ -360,6 +477,12 @@ final class PCPI_Polygraph_GF_Tools {
 
 			$applicant_display = trim( $last . ', ' . $first );
 			$applicant_name    = trim( $first . ' ' . $last );
+
+			// NEW: Best-effort Applicant email for Resend modal prefill.
+			$applicant_email = '';
+			if ( ! empty( $applicant_email_fid ) ) {
+				$applicant_email = trim( (string) rgar( $e, (string) $applicant_email_fid ) );
+			}
 
 			$date_created = rgar( $e, 'date_created' );
 			$date         = $date_created ? wp_date( 'M j, Y g:i A', strtotime( $date_created ) ) : '—';
@@ -533,12 +656,19 @@ final class PCPI_Polygraph_GF_Tools {
 				$debug_html = '<div class="pcpi-debug">' . implode( '<br>', array_map( 'esc_html', $debug_lines ) ) . '</div>';
 			}
 
+			// STATUS (derived)
+			$status_meta = self::compute_applicant_status( $q_entry_id, $review_ready, $review_entry_id, $pdf_ready );
+			$status_html = self::build_status_pill(
+				(string) ( $status_meta['key'] ?? 'pending' ),
+				(string) ( $status_meta['label'] ?? 'Questionnaire Pending' )
+			);
+
 			$actions = '
 				<div class="pcpi-actions">
 					' . $review_btn . '
 					' . $summary_btn . '
 					' . $sendpdf_btn . '
-					<button type="button" class="gf-action-btn pcpi-btn-resend pcpi-gf-resend-entry" data-id="' . esc_attr( $entry_id ) . '">Resend</button>
+					<button type="button" class="gf-action-btn pcpi-btn-resend pcpi-gf-resend-entry" data-id="' . esc_attr( $entry_id ) . '" data-applicant-email="' . esc_attr( $applicant_email ) . '" data-applicant-name="' . esc_attr( $applicant_name ) . '">Resend</button>
 					<button type="button" class="gf-action-btn pcpi-btn-delete pcpi-gf-delete-entry" data-id="' . esc_attr( $entry_id ) . '">Delete</button>
 				</div>
 				' . $debug_html;
@@ -546,9 +676,10 @@ final class PCPI_Polygraph_GF_Tools {
 			$bg_class = ( $i++ % 2 ) ? 'pcpi-row-odd' : 'pcpi-row-even';
 
 			$html .= '<tr class="' . esc_attr( $bg_class ) . '">
-				<td>' . esc_html( $applicant_display ) . '</td>
-				<td>' . esc_html( $date ) . '</td>
-				<td class="pcpi-actions-td">' . $actions . '</td>
+				<td data-label="Applicant">' . esc_html( $applicant_display ) . '</td>
+				<td data-label="Submitted">' . esc_html( $date ) . '</td>
+				<td class="pcpi-status-td" data-label="Status">' . $status_html . '</td>
+				<td class="pcpi-actions-td" data-label="Actions">' . $actions . '</td>
 			</tr>';
 		}
 
@@ -557,6 +688,9 @@ final class PCPI_Polygraph_GF_Tools {
 		if ( $total_entries > 0 ) {
 			$html .= self::render_pagination( $page, $total_pages, $page_var );
 		}
+
+		// Add Applicant modal (desktop only; mobile falls back to link navigation).
+		$html .= self::render_add_applicant_modal( 1 );
 
 		return $html;
 	}
@@ -700,6 +834,34 @@ $sent = wp_mail( $to_email, $subject, $body, $headers );
 
 		$sent = false;
 
+		// NEW: Optional override email (used when staff corrects a typo from the dashboard).
+		$override_email_raw = isset( $_POST['override_email'] ) ? (string) wp_unslash( $_POST['override_email'] ) : '';
+		$override_email     = $override_email_raw !== '' ? sanitize_email( $override_email_raw ) : '';
+		if ( $override_email !== '' && ! is_email( $override_email ) ) {
+			wp_send_json_error( [ 'message' => 'Please enter a valid email address.' ] );
+		}
+
+		// NEW: If an override is provided, force ONLY the target notification to go to that address.
+		$notification_filter = null;
+		if ( $override_email !== '' ) {
+			$notification_filter = function ( $notification, $form, $entry ) use ( $entry_id, $target_name_norm, $override_email ) {
+				$n_name = isset( $notification['name'] ) ? (string) $notification['name'] : '';
+				if ( $n_name === '' || self::normalize_name( $n_name ) !== $target_name_norm ) {
+					return $notification;
+				}
+
+				$eid = absint( rgar( $entry, 'id' ) );
+				if ( $eid !== absint( $entry_id ) ) {
+					return $notification;
+				}
+
+				$notification['to'] = $override_email;
+				return $notification;
+			};
+
+			add_filter( 'gform_notification', $notification_filter, 10, 3 );
+		}
+
 		if ( method_exists( 'GFAPI', 'send_notifications' ) && ! empty( $form['notifications'] ) && is_array( $form['notifications'] ) ) {
 			foreach ( $form['notifications'] as $nid => $n ) {
 				$n_name = isset( $n['name'] ) ? (string) $n['name'] : '';
@@ -716,11 +878,16 @@ $sent = wp_mail( $to_email, $subject, $body, $headers );
 			$sent = true;
 		}
 
+		if ( $notification_filter ) {
+			remove_filter( 'gform_notification', $notification_filter, 10 );
+		}
+
 		if ( ! $sent ) {
 			wp_send_json_error( [ 'message' => 'Notification did not send.' ] );
 		}
 
-		wp_send_json_success( [ 'message' => 'Sent.' ] );
+		$msg = ( $override_email !== '' ) ? ( 'Sent to ' . $override_email . '.' ) : 'Sent.';
+		wp_send_json_success( [ 'message' => $msg ] );
 	}
 
 	/**
@@ -962,6 +1129,45 @@ $sent = wp_mail( $to_email, $subject, $body, $headers );
 			]
 		);
 	}
+
+	/**
+	 * Render the Add Applicant modal container.
+	 * Note: On mobile, the Add Applicant button should navigate normally (JS does not intercept).
+	 */
+	private static function render_add_applicant_modal( int $form_id ) : string {
+
+		$form_id = absint( $form_id );
+		if ( $form_id <= 0 ) {
+			return '';
+		}
+
+		// Build the modal HTML. The GF shortcode output is included so desktop can open it instantly.
+		$gf = do_shortcode(
+			sprintf(
+				'[gravityforms id="%d" title="false" description="false" ajax="true"]',
+				$form_id
+			)
+		);
+
+		ob_start();
+		?>
+		<div id="pcpi-add-applicant-modal" class="pcpi-modal pcpi-modal--add" role="dialog" aria-modal="true" aria-hidden="true" style="display:none;">
+			<div class="pcpi-modal__backdrop" data-pcpi-add-close="1"></div>
+			<div class="pcpi-modal__panel" role="document">
+				<div class="pcpi-modal__header pcpi-modal__header--with-x">
+					<h3 class="pcpi-modal__title">Add Applicant</h3>
+					<button type="button" class="pcpi-modal__x" aria-label="Close" data-pcpi-add-close="1">×</button>
+				</div>
+				<div class="pcpi-modal__body">
+					<?php echo $gf; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
+				</div>
+			</div>
+		</div>
+		<?php
+		return (string) ob_get_clean();
+	}
+
+
 }
 
 PCPI_Polygraph_GF_Tools::init();
