@@ -17,6 +17,7 @@
 			if (json && json.data && json.data.message) return json.data.message;
 			if (json && json.message) return json.message;
 		} catch (e) {}
+		try { if (xhr && xhr.responseText) return xhr.responseText; } catch (e) {}
 		return "Request failed.";
 	}
 
@@ -26,7 +27,7 @@
 	// ADD APPLICANT MODAL (Gutenberg button trigger)
 	// ------------------------------------------------------------------
 	const ADD_MODAL_SELECTOR = "#pcpi-add-applicant-modal";
-	const ADD_BTN_SELECTOR = (PCPI_GF && PCPI_GF.addApplicantBtnSelector) ? PCPI_GF.addApplicantBtnSelector : ".pcpi-add-applicant-btn";
+	const ADD_BTN_SELECTOR = (PCPI_GF && PCPI_GF.addApplicantBtnSelector) ? PCPI_GF.addApplicantBtnSelector : ".pcpi-add-applicant-btn, .pcpi-staff-dashboard a[href*=\"/add-applicant/\"]";
 
 	let pcpiLastAddTrigger = null;
 	let pcpiAddFocusHandlerBound = false;
@@ -40,7 +41,6 @@
 	function openAddApplicantModal(triggerEl) {
 		const $modal = $(ADD_MODAL_SELECTOR);
 		if (!$modal.length) {
-			window.alert("Add Applicant form is not available on this page.");
 			return;
 		}
 
@@ -118,6 +118,11 @@
 			return; // allow default
 		}
 
+		// If the modal markup is not present, allow normal navigation.
+		if (!$(ADD_MODAL_SELECTOR).length) {
+			return;
+		}
+
 		e.preventDefault();
 		e.stopPropagation();
 		openAddApplicantModal(this);
@@ -165,11 +170,6 @@
 						<div class="pcpi-modal__note">
 							We&apos;ll resend the Questionnaire link to this address.
 						</div>
-
-						<label class="pcpi-modal__note" for="pcpi_resend_update" style="display:flex;gap:8px;align-items:flex-start;">
-							<input id="pcpi_resend_update" type="checkbox" value="1" />
-							<span>Update applicant record with this email</span>
-						</label>
 					</div>
 					<div class="pcpi-modal__footer">
 						<button type="button" class="gf-action-btn pcpi-btn-cancel" data-pcpi-resend-close="1">Cancel</button>
@@ -196,8 +196,6 @@
 
 		$resendModal.find(".pcpi-modal__title--resend").text(title);
 		$resendModal.find("#pcpi_resend_email").val(context.applicantEmail || "");
-
-		$resendModal.find("#pcpi_resend_update").prop("checked", false);
 
 		$resendModal.attr("aria-hidden", "false").show();
 
@@ -254,11 +252,17 @@
 		postAjax({
 			action: "gf_resend_entry",
 			security: PCPI_GF.nonceResend,
-			entry_id: ctx.entryId,
+			entry_id: parseInt(ctx.entryId, 10) || 0,
 			override_email: toEmail,
-			update_entry: $resendModal.find("#pcpi_resend_update").is(":checked") ? 1 : 0,
 		})
 			.done(function (resp) {
+				// Some hosts/plugins emit notices which can cause jQuery to treat the response as a string.
+				if (typeof resp === "string") {
+					try {
+						resp = JSON.parse(resp);
+					} catch (e) {}
+				}
+
 				if (resp && resp.success) {
 					closeResendModal();
 					window.alert((resp && resp.data && resp.data.message) || "Sent.");
@@ -294,9 +298,15 @@
 		postAjax({
 			action: "gf_delete_entry",
 			security: PCPI_GF.nonceDelete,
-			entry_id: btn.data("id"),
+			entry_id: parseInt(btn.data("id"), 10) || 0,
 		})
 			.done(function (resp) {
+				if (typeof resp === "string") {
+					try {
+						resp = JSON.parse(resp);
+					} catch (e) {}
+				}
+
 				if (resp && resp.success) {
 					// Remove row
 					btn.closest("tr").fadeOut(150, function () {
@@ -432,6 +442,12 @@
 			to_email: toEmail,
 		})
 			.done(function (resp) {
+				if (typeof resp === "string") {
+					try {
+						resp = JSON.parse(resp);
+					} catch (e) {}
+				}
+
 				if (resp && resp.success) {
 					closeModal();
 					window.alert("Sent.");

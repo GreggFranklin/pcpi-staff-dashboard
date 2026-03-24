@@ -109,20 +109,23 @@ td.pcpi-status-td {
 
 /* Disabled: keep tooltips (title) working */
 .gf-action-btn.gf-disabled,
-.gf-action-btn[disabled] {
+.gf-action-btn[disabled],
+.gf-action-btn.disabled,
+.gf-action-btn[aria-disabled="true"] {
 	opacity: 0.55;
 	cursor: not-allowed;
 	pointer-events: auto; /* IMPORTANT: allows hover/title tooltips */
 }
 
-/* Subtle hover motion + depth (no color shifting) */
-.gf-action-btn:hover:not(.gf-disabled):not([disabled]) {
+/* Subtle hover motion + depth (no color shifting)
+   IMPORTANT: exclude .disabled + aria-disabled spans too */
+.gf-action-btn:hover:not(.gf-disabled):not(.disabled):not([disabled]):not([aria-disabled="true"]) {
 	transform: translateY(-1px);
 	box-shadow: 0 2px 6px rgba(0,0,0,0.12);
 }
 
 /* Press */
-.gf-action-btn:active:not(.gf-disabled):not([disabled]) {
+.gf-action-btn:active:not(.gf-disabled):not(.disabled):not([disabled]):not([aria-disabled="true"]) {
 	transform: translateY(0);
 	box-shadow: 0 1px 3px rgba(0,0,0,0.12);
 }
@@ -299,7 +302,6 @@ td.pcpi-status-td {
 	margin: 0;
 	font-size: 16px;
 }
-
 
 /* Modal close button */
 .pcpi-modal__header--with-x{
@@ -574,4 +576,136 @@ td.pcpi-status-td {
 		width: 100%;
 		justify-content: center;
 	}
+}
+
+
+/* -------------------------------------------------
+ * Disabled buttons: force grey + disable hover color changes
+ * ------------------------------------------------- */
+.gf-action-btn.gf-disabled,
+.gf-action-btn[disabled],
+.gf-action-btn.disabled,
+.gf-action-btn[aria-disabled="true"],
+.gf-action-btn.gf-disabled:hover,
+.gf-action-btn[disabled]:hover,
+.gf-action-btn.disabled:hover,
+.gf-action-btn[aria-disabled="true"]:hover,
+.gf-action-btn.gf-disabled:focus,
+.gf-action-btn[disabled]:focus,
+.gf-action-btn.disabled:focus,
+.gf-action-btn[aria-disabled="true"]:focus,
+.gf-action-btn.gf-disabled:active,
+.gf-action-btn[disabled]:active,
+.gf-action-btn.disabled:active,
+.gf-action-btn[aria-disabled="true"]:active {
+	background-color: #e5e7eb !important;
+	border-color: #e5e7eb !important;
+	color: #6b7280 !important;
+	box-shadow: none !important;
+	transform: none !important;
+	cursor: not-allowed !important;
+}
+
+
+/* Workflow label under Applicant name */
+.pcpi-workflow-label{
+	display:block;
+	font-size:13px;
+	opacity:0.8;
+	margin-top:2px;
+}
+
+/* =========================================================
+   PCPI Add Applicant Modal – Gravity Forms UI tightening
+   ========================================================= */
+
+/* Tighten Gravity Forms vertical spacing ONLY inside modal */
+#pcpi-add-applicant-modal .gform-theme--foundation,
+#pcpi-add-applicant-modal .gform-theme--api{
+  --gf-form-gap-y: 10px;
+}
+
+/* Hide default GF required legend at top */
+#pcpi-add-applicant-modal .gform_wrapper .gform_required_legend{
+  display: none !important;
+}
+
+/* Footer layout: legend left, submit button right */
+#pcpi-add-applicant-modal .gform_wrapper .gform_footer{
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding-top: 4px;
+}
+
+/* Legend on the LEFT */
+#pcpi-add-applicant-modal .gform_wrapper .gform_footer::before{
+  content: '* indicates required fields';
+  font-size: 13px;
+  color: #c02b0a; /* required fields color */
+  white-space: nowrap;
+}
+
+/* Submit button on the RIGHT */
+#pcpi-add-applicant-modal .gform_wrapper .gform_button{
+  margin-left: auto;
+  background-color: #2b6cb0;
+  border-color: #2b6cb0;
+  color: #fff;
+}
+
+/* Button hover/focus */
+#pcpi-add-applicant-modal .gform_wrapper .gform_button:hover,
+#pcpi-add-applicant-modal .gform_wrapper .gform_button:focus{
+  background-color: #245a96;
+  border-color: #245a96;
+}
+
+/* Lighter placeholders (Name fields + all inputs in modal) */
+#pcpi-add-applicant-modal .gform_wrapper input::placeholder,
+#pcpi-add-applicant-modal .gform_wrapper textarea::placeholder{
+  color: rgba(17,35,55,0.45);
+}
+
+/* =========================================================
+ * PCPI Modal close button (final)
+ * ========================================================= */
+
+/* Position the X reliably */
+.pcpi-modal .pcpi-modal__panel{
+  position: absolute; /* as you already have */
+}
+
+.pcpi-modal .pcpi-modal__x{
+  position: absolute !important;
+  top: 10px !important;
+  right: 12px !important;
+  z-index: 2147483647 !important;
+
+  appearance: none;
+  border: 0;
+  background: transparent;
+  color: #111827;
+  font-size: 22px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 6px 8px;
+  border-radius: 8px;
+}
+
+/* Nice hover/focus (no ugly outline) */
+.pcpi-modal .pcpi-modal__x:hover{
+  background: rgba(17,35,55,0.08);
+}
+
+.pcpi-modal .pcpi-modal__x:focus,
+.pcpi-modal .pcpi-modal__x:focus-visible{
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(43,108,176,0.25);
+}
+
+/* Prevent title collision with absolute X */
+.pcpi-modal .pcpi-modal__header{
+  position: relative;
+  padding-right: 52px;
 }
