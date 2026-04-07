@@ -16,6 +16,21 @@
  */
 final class PCPI_Staff_Dashboard {
 
+// NEW: Prevent duplicate logs per request
+private static array $logged = [];
+
+// NEW: Centralized Staff Dashboard logger
+private static function log( string $message, string $level = 'INFO' ): void {
+
+	if ( ! apply_filters( 'pcpi_staff_dashboard_debug', false ) ) {
+		return;
+	}
+
+	$time = date( 'Y-m-d H:i:s' );
+
+	error_log( "[PCPI][SD][$level][$time] $message" );
+}
+
 	private static bool $assets_enqueued = false;
 
 	public static function init() : void {
@@ -248,9 +263,23 @@ private static function resolve_workflow_key_from_entry( array $entry, array $cf
 				continue;
 			}
 			$raw = trim( (string) rgar( $entry, (string) $fid ) );
-			error_log( '[PCPI_SD resolver] entry_id=' . rgar( $entry, 'id' ) . ' form_id=' . $form_id . ' is_applicant_form=' . ( $is_applicant_form ? 'yes' : 'no' ) . ' checking workflow=' . $key . ' fid=' . $fid . ' raw="' . $raw . '"'  );
+			$log_key = 'resolver_' . rgar( $entry, 'id' );
+
+if ( ! isset( self::$logged[ $log_key ] ) ) {
+
+	self::$logged[ $log_key ] = true;
+
+	self::log(
+		"[resolver] entry_id=" . rgar( $entry, 'id' ) .
+		" form_id=$form_id is_applicant_form=" . ( $is_applicant_form ? 'yes' : 'no' ) .
+		" checking workflow=$key fid=$fid raw=\"$raw\""
+	);
+}
 			if ( $raw !== '' ) {
-				error_log( '[PCPI_SD resolver] MATCHED entry_id=' . rgar( $entry, 'id' ) . ' => workflow_key=' . sanitize_key( $raw ) );
+				self::log(
+	"[resolver] MATCHED entry_id=" . rgar( $entry, 'id' ) .
+	" => workflow_key=" . sanitize_key( $raw )
+);
 				return sanitize_key( $raw );
 			}
 		}
@@ -275,7 +304,10 @@ private static function resolve_workflow_key_from_entry( array $entry, array $cf
 
 	// 3) Default key fallback.
 	$default = isset( $cfg['DEFAULT_WORKFLOW_KEY'] ) ? (string) $cfg['DEFAULT_WORKFLOW_KEY'] : 'polygraph';
-	error_log( '[PCPI_SD resolver] FALLBACK entry_id=' . rgar( $entry, 'id' ) . ' form_id=' . $form_id . ' => default=' . $default );
+	self::log(
+	"[resolver] FALLBACK entry_id=" . rgar( $entry, 'id' ) .
+	" form_id=$form_id => default=$default"
+);
 	return sanitize_key( $default !== '' ? $default : 'polygraph' );
 }
 
@@ -898,7 +930,7 @@ $applicant_display_html = esc_html( $applicant_display );
 						[
 							'status'        => 'active',
 							'field_filters' => [
-								[ 'key' => (string) $fid, 'value' => (string) $entry_id ],
+								[ 'key' => is_numeric($fid) ? (int) $fid : $fid, 'value' => (string) $entry_id ],
 							],
 						],
 						[ 'key' => 'date_created', 'direction' => 'DESC' ],
@@ -960,7 +992,18 @@ $applicant_display_html = esc_html( $applicant_display );
 				$has_review = true; // safe default for unknown workflows
 			}
 
-			error_log( '[PCPI_SD row] entry_id=' . $entry_id . ' workflow_key=' . $workflow_key . ' is_kiosk=' . ( $is_kiosk ? 'yes' : 'no' ) . ' has_review=' . ( $has_review ? 'yes' : 'no' ) . ' q_entry_id=' . $q_entry_id . ' row_questionnaire_form_id=' . $row_questionnaire_form_id . ' row_q_parent_field_ids=' . implode( ',', $row_q_parent_field_ids ) );
+			$log_key = 'row_' . $entry_id;
+
+if ( ! isset( self::$logged[ $log_key ] ) ) {
+
+	self::$logged[ $log_key ] = true;
+
+	self::log(
+		"[row] entry_id=$entry_id workflow_key=$workflow_key is_kiosk=" . ( $is_kiosk ? 'yes' : 'no' ) .
+		" has_review=" . ( $has_review ? 'yes' : 'no' ) .
+		" q_entry_id=$q_entry_id questionnaire_form_id=$row_questionnaire_form_id"
+	);
+}
 
 			/* REVIEW BUTTON */
 
@@ -1142,7 +1185,10 @@ if ( $is_kiosk ) {
 				$cache_review_entry_by_qid[ $q_entry_id ] = $review_entry_id;
 			}
 
-			error_log( '[PCPI_SD row] entry_id=' . $entry_id . ' q_entry_id=' . $q_entry_id . ' pdf_ready=' . ( $pdf_ready ? 'yes' : 'no' ) . ' review_entry_id=' . $review_entry_id . ' pdf_url=' . $pdf_url );
+			self::log(
+	"[row] entry_id=$entry_id q_entry_id=$q_entry_id pdf_ready=" . ( $pdf_ready ? 'yes' : 'no' ) .
+	" review_entry_id=$review_entry_id"
+);
 
 			if ( $pdf_ready && $pdf_url !== '' ) {
 				$summary_btn = '<a href="' . esc_url( $pdf_url ) . '" target="_blank" rel="noopener noreferrer" class="gf-action-btn pcpi-btn-summary">Summary</a>';
